@@ -556,34 +556,27 @@ jobs:
           
           echo "Artifacts prepared for upload:"
           ls -lh ./release-assets
-          
-      - name: Create GitHub Release
+        
+      - name: Create GitHub Release and Upload Assets
+        # 条件判断保持不变
         if: ${{ steps.release_check.outcome == 'success' }}
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ env.NEW_TAG }}
-          prerelease: false
-          release_name: ${{ env.RELEASE_NAME }}
+          name: ${{ env.RELEASE_NAME }}
           body: ${{ env.FULL_RELEASE_NOTES }}
-          token: ${{ secrets.MY_GITHUB_TOKEN }}
-          
-      - name: Upload Release Assets
-        if: ${{ steps.release_check.outcome == 'success' }}
-        env:
-          GH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-        run: |
-          echo "Uploading release assets..."
-          
-          # Upload all files in the release-assets directory
-          for file in ./release-assets/*; do
-            echo "Uploading $file"
-            gh release upload "${{ env.NEW_TAG }}" "$file" || echo "Failed to upload $file"
-          done
-          
-          echo "Upload completed!"
-          
+          # 直接使用通配符匹配文件，不需要写循环脚本
+          files: ./release-assets/*
+          # 设置为 false 表示正式版，true 表示预览版
+          draft: false
+          prerelease: false
+          # 确保你的 Token 有 contents 写权限
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Verify Uploaded Assets
         if: ${{ steps.release_check.outcome == 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Uploaded assets:"
+          echo "Verifying release assets..."
           gh release view "${{ env.NEW_TAG }}" --json assets -q '.assets[].name'
